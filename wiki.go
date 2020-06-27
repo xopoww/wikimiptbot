@@ -81,7 +81,7 @@ var (
 func escapeMarkdownV2(s string) string {
 	return mustEscapeRE.ReplaceAllStringFunc(s, func(ss string) string {return "\\"+ss})
 }
-func parseTag(tag soup.Root) (string, error) {
+func parseTag(tag soup.Root, safe bool) (string, error) {
 	if tag.Pointer.Type == html.TextNode {
 		if nonWhitespaceRE.FindStringIndex(tag.NodeValue) == nil {
 			return "", nil
@@ -100,17 +100,17 @@ func parseTag(tag soup.Root) (string, error) {
 		}
 		result += "["
 		for _, child := range tag.Children() {
-			subres, err := parseTag(child)
+			subres, err := parseTag(child, safe)
 			if err != nil {
 				return "", err
 			}
 			result += subres
 		}
 		result += fmt.Sprintf("](%s)", url)
-	} else if head, ok := tagHeads[tag.NodeValue]; ok {
+	} else if head, ok := tagHeads[tag.NodeValue]; ok || safe {
 		result += head
 		for _, child := range tag.Children() {
-			subres, err := parseTag(child)
+			subres, err := parseTag(child, safe)
 			if err != nil {
 				return "", err
 			}
@@ -162,7 +162,7 @@ func getProfile (name string) (teacherProfile, error) {
 	}
 
 	for tag := table.FindNextSibling(); tag.NodeValue != "div"; tag = tag.FindNextSibling() {
-		parsed, err := parseTag(tag)
+		parsed, err := parseTag(tag, true)
 		if err != nil {
 			return teacherProfile{}, err
 		}
