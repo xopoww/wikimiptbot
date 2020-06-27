@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"log"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 func keyboardFromSearchResults(results []string) (tgbotapi.InlineKeyboardMarkup, bool) {
@@ -51,7 +52,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	bot.Debug = true
+	bot.Debug = false
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -88,30 +89,47 @@ func main() {
 			}
 		}
 		if update.Message != nil {
-			var msg tgbotapi.MessageConfig
-
-			results, err := search(update.Message.Text)
-			if err == badCharError {
-				msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Неподдерживаемые символы в запросе")
-			}else if err != nil {
-				log.Panic(err)
-			} else {
-				if len(results) != 0 {
-					msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Результаты поиска:")
-					msg.ParseMode = "MarkdownV2"
-					msg.ReplyToMessageID = update.Message.MessageID
-					var tooLong bool
-					msg.ReplyMarkup, tooLong = keyboardFromSearchResults(results)
-					if tooLong {
-						msg.Text += "\n_\\(первые 10 результатов\\)_"
+			if update.Message.IsCommand() {
+				switch update.Message.Command() {
+				case "start": {
+					text := "Привет! Я ищу преподавателей на wikimipt.org. Попробуй написать мне фамилию преподавателя."
+					if _, err := bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, text)); err != nil {
+						log.Panic(err)
 					}
-				} else {
-					msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Ничего не найдено")
-					msg.ReplyToMessageID = update.Message.MessageID
 				}
-			}
-			if _, err := bot.Send(msg); err != nil {
-				log.Panic(err)
+				default: {
+					text := fmt.Sprintf("Неизвестная команда: %s", update.Message.Text)
+					if _, err := bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, text)); err != nil {
+						log.Panic(err)
+					}
+				}
+				}
+			} else {
+				var msg tgbotapi.MessageConfig
+
+				results, err := search(update.Message.Text)
+				if err == badCharError {
+					msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Неподдерживаемые символы в запросе")
+				} else if err != nil {
+					log.Panic(err)
+				} else {
+					if len(results) != 0 {
+						msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Результаты поиска:")
+						msg.ParseMode = "MarkdownV2"
+						msg.ReplyToMessageID = update.Message.MessageID
+						var tooLong bool
+						msg.ReplyMarkup, tooLong = keyboardFromSearchResults(results)
+						if tooLong {
+							msg.Text += "\n_\\(первые 10 результатов\\)_"
+						}
+					} else {
+						msg = tgbotapi.NewMessage(update.Message.Chat.ID, "Ничего не найдено")
+						msg.ReplyToMessageID = update.Message.MessageID
+					}
+				}
+				if _, err := bot.Send(msg); err != nil {
+					log.Panic(err)
+				}
 			}
 		}
 	}
