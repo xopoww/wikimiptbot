@@ -88,7 +88,7 @@ func main() {
 				_, err = sendPhoto(bot, update.CallbackQuery.Message.Chat.ID, profile.photo, text)
 			}
 		}
-		if update.Message != nil {
+		if update.Message != nil && update.Message.Text != ""{
 			if update.Message.IsCommand() {
 				switch update.Message.Command() {
 				case "start": {
